@@ -15,10 +15,10 @@ import (
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
-	"github.com/docker/docker/pkg/tlsconfig"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/docker/engine-api/types"
+	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/trustpinning"
 	"github.com/docker/notary/tuf/data"
@@ -85,7 +85,7 @@ func TrustedReference(ctx context.Context, ref reference.NamedTagged) (reference
 // It creates an HTTP transport providing authentication support.
 func getNotaryRepository(repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
 	server := trustServer()
-	var cfg = tlsconfig.ClientDefault
+	var cfg = tlsconfig.ClientDefault()
 	cfg.InsecureSkipVerify = !repoInfo.Index.Secure
 
 	base := &http.Transport{
@@ -96,7 +96,7 @@ func getNotaryRepository(repoInfo *registry.RepositoryInfo, authConfig types.Aut
 			DualStack: true,
 		}).Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig:     &cfg,
+		TLSClientConfig:     cfg,
 		DisableKeepAlives:   true,
 	}
 
@@ -134,7 +134,7 @@ func getNotaryRepository(repoInfo *registry.RepositoryInfo, authConfig types.Aut
 	modifiers = append(modifiers, transport.RequestModifier(auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler)))
 	tr := transport.NewTransport(base, modifiers...)
 
-	return client.NewNotaryRepository(".trust", repoInfo.FullName(), server, tr, nil, trustpinning.TrustPinConfig{})
+	return client.NewFileCachedNotaryRepository(".trust", repoInfo.FullName(), server, tr, nil, trustpinning.TrustPinConfig{})
 }
 
 type target struct {
